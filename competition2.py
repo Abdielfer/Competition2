@@ -41,10 +41,10 @@ def formating_prediction(predictions):
         return de predicted classes from the hypotesis function result (sigmoid(W,X))
         @hypotesis : matrix of probablilities 
         '''
-        y_hat = pd.DataFrame({'S.No' : [],'LABELS' : []}, dtype=np.int8) 
+        y_hat = pd.DataFrame({'S.No' : [],'LABELS' : []}, dtype=np.int8, index=None) 
         for i in range(len(predictions)):
             y_hat.loc[i] = [i,predictions[i]]
-        return pd.DataFrame(data = y_hat) 
+        return pd.DataFrame(data = y_hat, index=None) 
 
 ### Some helpers function
 def predictOnSet(modelFilename, x_test):
@@ -114,14 +114,18 @@ def xgboost(x_train, y_train, x_validation, y_validation):
     model = XGBClassifier(use_label_encoder=False, eval_metric ='error')
     model.fit(x_train, y_train)
     y_pred = model.predict(x_validation)
-    predictions = [round(value) for value in y_pred]
+    # predictions = [round(value) for value in y_pred]
     # evaluate predictions
-    accuracy = accuracy_score(y_validation, predictions)
+    accuracy = accuracy_score(y_validation, y_pred)
     print("Accuracy xgboost: %.2f%%" % (accuracy * 100.0))
-    predictionsDF = formating_prediction(predictions)
+    predictionsDF = formating_prediction(y_pred)
+    nameToSavePrediction = type(model).__name__ + '.csv'
+    predictionsDF.to_csv(nameToSavePrediction)
     return model, accuracy, predictionsDF
 
 model, accuracy, predictionsDF = xgboost(x_train, y_train, x_validation, y_validation)
-savingModels(model, "xgboost_singleTest.pkl")
+
+# savingModels(model, "xgboost_singleTest.pkl")
 # y_pred = model.predict(x_validation)
-evaluate_model(x_train, y_train, x_validation, y_validation, model)
+# fi_model = evaluate_model(x_train, y_train, x_validation, y_validation, model)
+# fi_model.to_csv('fi_xgboost.csv')
