@@ -123,7 +123,6 @@ def xgboost(x_train, y_train, x_validation, y_validation):
     predictionsDF.to_csv(nameToSavePrediction)
     return model, accuracy, predictionsDF
 
-<<<<<<< HEAD
 model = XGBClassifier(use_label_encoder=False)
 x_train = x_train[0:1000]
 y_train = y_train[0:1000]
@@ -132,11 +131,3 @@ savingModels(model, "xgboost_singleTest.pkl")
 # y_pred = model.predict(x_validation)
 
 evaluate_model(x_train, y_train, x_validation, y_validation, model)
-=======
-model, accuracy, predictionsDF = xgboost(x_train, y_train, x_validation, y_validation)
-
-# savingModels(model, "xgboost_singleTest.pkl")
-# y_pred = model.predict(x_validation)
-# fi_model = evaluate_model(x_train, y_train, x_validation, y_validation, model)
-# fi_model.to_csv('fi_xgboost.csv')
->>>>>>> ae19ee440bd9f9890ddb9e7cae8268b127d80cd1
