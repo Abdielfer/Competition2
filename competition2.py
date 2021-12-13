@@ -53,12 +53,12 @@ x_validation = x_validation.fillna(xMean)
 #     prediction = rf_classifier.predict(x_test)
 #     return prediction
 
-# def savingModels(classifier, modelFileName):
-#     '''
-#     NOTE: Do not forget the extention = *.pkl
-#     Save as : 'modelFileName.pkl'
-#     '''
-#     joblib.dump(classifier, modelFileName)
+def savingModels(classifier, modelFileName):
+    '''
+    NOTE: Do not forget the extention = *.pkl
+    Save as : 'modelFileName.pkl'
+    '''
+    joblib.dump(classifier, modelFileName)
 
 
 # def importModel(modefname):
@@ -122,8 +122,10 @@ x_validation = x_validation.fillna(xMean)
 #     return model, accuracy, predictionsDF
 
 model = XGBClassifier(use_label_encoder=False)
+x_train = x_train[0:1000]
+y_train = y_train[0:1000]
 model.fit(x_train, y_train)
 savingModels(model, "xgboost_singleTest.pkl")
 # y_pred = model.predict(x_validation)
 
-# evaluate_model(x_train, y_train, x_validation, y_validation, model)
+evaluate_model(x_train, y_train, x_validation, y_validation, model)
