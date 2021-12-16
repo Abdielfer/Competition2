@@ -22,112 +22,55 @@ from xgboost import XGBClassifier
 from collections import Counter
 seedRF = 50
 
+def meanStd(dataset):
+    '''
+    dataset_minmax(dataset)
+    return a list like {min:#,max:#}
+    # Find the min and std values for each column
+    '''
+    col = dataset.shape[1]
+    meanVal, stdVal = 0,0
+    stats = list()
+    for i in range(col):
+        val = dataset.iloc[:, i]
+        meanVal = np.mean(val)
+        stdVal = np.std(val)
+        stats.append([meanVal,stdVal])
+    return stats
+
+def standardize_data(dataset, mean_std):
+    '''
+    standardize_data(dataset, mean_std)
+    @mean_std: @arguent: list of min/max valuer per column {min:#,max:#}
+    # Rescale dataset columns to the range 0-1
+    '''
+    col = dataset.shape[1]
+    row = dataset.shape[0]
+    for i in range(1,col):
+        for n in range(row):
+            dataset.iloc[n,i] -= mean_std[i][0]
+            dataset.iloc[n,i] /= mean_std[i][1]
+    return dataset
+
+
 ###Import Data
 train = pd.read_csv("train.csv", index_col = None)
 y = train[['LABELS']]
 x = train.drop('LABELS', axis=1)
 xMean = x.mean()
+x = x.fillna(xMean)
 test_nolabels = pd.read_csv("test_nolabels.csv", index_col = None)
-# Splitting trainig/Validation
-x_train, x_validation, y_train, y_validation = train_test_split( x,y, test_size=0.2)
-
-## Replacing possible missing values
-x_train = x_train.fillna(xMean)
-x_validation = x_validation.fillna(xMean)
-
-## adapt the prediction to Kaggel format of submission 
-def formating_prediction(predictions): 
-        '''
-        return de predicted classes from the hypotesis function result (sigmoid(W,X))
-        @hypotesis : matrix of probablilities 
-        '''
-        y_hat = pd.DataFrame({'S.No' : [],'LABELS' : []}, dtype=np.int8, index=None) 
-        for i in range(len(predictions)):
-            y_hat.loc[i] = [i,predictions[i]]
-        return pd.DataFrame(data = y_hat, index=None) 
-
-### Some helpers function
-def predictOnSet(modelFilename, x_test):
-        # # load the model from disk to predict new dataSet
-    loaded_model = pickle.load(open(modelFilename, 'rb'))
-    prediction = loaded_model.predict(x_test)
-    return prediction
-
-def savingModels(classifier, modelFileName):
-    '''
-    NOTE: Do not forget the extention = *.pkl
-    Save as : 'modelFileName.pkl'
-    '''
-    joblib.dump(classifier, modelFileName)
-
-
-def importModel(modefname):
-    model = pickle.load(open(modefname,'rb'))
-    return model
-
-def savePrediction(prediction, filename):
-    '''
-    Save predictions
-    @argument: filename: Remenber EXTENTION 'filename.csv'
-    '''
-    prediction = prediction.astype('int32') #exsure prediction as integer
-    predictions_DF = formating_prediction(prediction)
-    return predictions_DF.to_csv(filename, index = None)
-
-# ## modle evaluation
-def metric_RocAuc(y_probability, y_validation, estimator_name):
-    '''
-    Calculate and plt ROC metric
-    @argument: y_probability : the probability class=1.
-    @argument: y_validation: True labels.
-    fpr, tpr = false_positive, true_positive.
-    Return: "false_positive" and "true_positive", ROC_auc metric.
-    '''
-    fpr, tpr, _ = roc_curve(y_validation, y_probability) 
-    roc_auc = auc(fpr, tpr)
-    fig, axes = plt.subplots(constrained_layout=True,figsize=(5,3), dpi=150)
-    fig.suptitle(estimator_name)
-    axes.plot([0, 1], [0, 1], color= 'k',linestyle="--") # perfect fit 
-    display = metrics.RocCurveDisplay(fpr=fpr, tpr=tpr, roc_auc=roc_auc,
-                                       estimator_name=estimator_name)
-    display.plot(ax=axes)
-    return fpr, tpr, roc_auc
-
-## Show some evaluation criteria on the clasifier
-def evaluate_model(x_train, y_train, x_validation, y_validation, classifier):
-    features = x_train.columns
-    # validation_Prediction = classifier.predict(x_validation)
-    validation_PredictedProb = classifier.predict_proba(x_validation)[:, 1]
-    ### ROC metric and curve #####
-    clasifierName = type(classifier).__name__
-    metric_RocAuc(validation_PredictedProb, y_validation,clasifierName)
-    fi_model = pd.DataFrame({'feature': features,
-                   'importance': classifier.feature_importances_}).\
-                    sort_values('importance', ascending = False)
-    clasifierNameExtended = clasifierName + "_info_fi"     
-    fi_model.to_csv(clasifierNameExtended, index = None)
-    return fi_model
-
-#     ## XGBOOST
-def xgboost(x_train, y_train, x_validation, y_validation):    
-    # fit model no training data
-    model = XGBClassifier(use_label_encoder=False, eval_metric ='error')
-    model.fit(x_train, y_train)
-    y_pred = model.predict(x_validation)
-    # predictions = [round(value) for value in y_pred]
-    # evaluate predictions
-    accuracy = accuracy_score(y_validation, y_pred)
-    print("Accuracy xgboost: %.2f%%" % (accuracy * 100.0))
-    predictionsDF = formating_prediction(y_pred)
-    nameToSavePrediction = type(model).__name__ + '.csv'
-    predictionsDF.to_csv(nameToSavePrediction)
-    return model, accuracy, predictionsDF
-
-model = XGBClassifier(use_label_encoder=False)
-x_train = x_train[0:1000]
-y_train = y_train[0:1000]
-model.fit(x_train, y_train)
-savingModels(model, "xgboost_singleTest.pkl")
-# y_pred = model.predict(x_validation)
-
-evaluate_model(x_train, y_train, x_validation, y_validation, model)
+test_nolabels = test_nolabels.fillna(xMean)
+toposElevation = {"topo_elevation_jan",'topo_elevation_feb','topo_elevation_mar','topo_elevation_apr','topo_elevation_may','topo_elevation_jun','topo_elevation_jul','topo_elevation_aug','topo_elevation_sep','topo_elevation_oct','topo_elevation_nov','topo_elevation_dec'}
+topoSlope = {'topo_slope_jan','topo_slope_feb','topo_slope_mar','topo_slope_apr','topo_slope_may','topo_slope_aug','topo_slope_jun','topo_slope_jul','topo_slope_sep','topo_slope_oct','topo_slope_nov','topo_slope_dec'}
+topoElevationDF = x[toposElevation]
+topoElevationMean = topoElevationDF.mean(axis=1)
+x = x.drop(toposElevation,axis=1)
+x['topoElevationMean'] = topoElevationMean
+topoSlopeDF = x[topoSlope]
+topoSlopeMean = topoSlopeDF.mean(axis=1)
+x = x.drop(topoSlope, axis=1)
+x['topoSlope'] = topoSlopeMean
+mean_std_x_train = meanStd(x)
+x = standardize_data(x, mean_std_x_train)
+x.to_csv('x_standardized.csv')
