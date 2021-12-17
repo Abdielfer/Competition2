@@ -54,23 +54,28 @@ def standardize_data(dataset, mean_std):
 
 
 ###Import Data
-train = pd.read_csv("train.csv", index_col = None)
-y = train[['LABELS']]
-x = train.drop('LABELS', axis=1)
-xMean = x.mean()
-x = x.fillna(xMean)
+# train = pd.read_csv("train.csv", index_col = None)
+# y = train[['LABELS']]
+# x = train.drop('LABELS', axis=1)
+# xMean = x.mean()
+# x = x.fillna(xMean)
 test_nolabels = pd.read_csv("test_nolabels.csv", index_col = None)
-test_nolabels = test_nolabels.fillna(xMean)
+test_nolabels_means = test_nolabels.mean()
+test_nolabels = test_nolabels.fillna(test_nolabels_means)
 toposElevation = {"topo_elevation_jan",'topo_elevation_feb','topo_elevation_mar','topo_elevation_apr','topo_elevation_may','topo_elevation_jun','topo_elevation_jul','topo_elevation_aug','topo_elevation_sep','topo_elevation_oct','topo_elevation_nov','topo_elevation_dec'}
 topoSlope = {'topo_slope_jan','topo_slope_feb','topo_slope_mar','topo_slope_apr','topo_slope_may','topo_slope_aug','topo_slope_jun','topo_slope_jul','topo_slope_sep','topo_slope_oct','topo_slope_nov','topo_slope_dec'}
-topoElevationDF = x[toposElevation]
+topoElevationDF = test_nolabels[toposElevation]
 topoElevationMean = topoElevationDF.mean(axis=1)
-x = x.drop(toposElevation,axis=1)
-x['topoElevationMean'] = topoElevationMean
-topoSlopeDF = x[topoSlope]
+test_nolabels = test_nolabels.drop(toposElevation,axis=1)
+test_nolabels['topoElevationMean'] = topoElevationMean
+topoSlopeDF = test_nolabels[topoSlope]
 topoSlopeMean = topoSlopeDF.mean(axis=1)
-x = x.drop(topoSlope, axis=1)
-x['topoSlope'] = topoSlopeMean
-mean_std_x_train = meanStd(x)
-x = standardize_data(x, mean_std_x_train)
-x.to_csv('x_standardized.csv')
+test_nolabels = test_nolabels.drop(topoSlope, axis=1)
+test_nolabels['topoSlope'] = topoSlopeMean
+mean_std_x_train = meanStd(test_nolabels)
+test_nolabelsx = standardize_data(test_nolabels, mean_std_x_train)
+x.to_csv('nonLabeled_standardized.csv')
+
+
+
+
