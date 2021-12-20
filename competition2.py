@@ -167,3 +167,98 @@ def evaluate_model(x_train, y_train, x_validation, y_validation, classifier):
     clasifierNameExtended = clasifierName + "_info_fi.csv"     
     fi_model.to_csv(clasifierNameExtended, index = None)
     return fi_model
+
+    #### Ramdomized RF  ####
+# Hyperparameter grid NOTE: Grid search was transformed several time to enlage the exploration. 
+# Best ramdom seach grid has been publiched in the Report
+param_grid = {
+    'n_estimators': np.linspace(10, 400,20).astype(int),
+    'max_depth': [None] + list(np.linspace(3, 20).astype(int)),
+    'max_features': ['auto', 'sqrt', None] + list(np.arange(0.5, 1, 0.1)),
+    'max_leaf_nodes': [None] + list(np.linspace(10, 50, 500).astype(int)),
+    'min_samples_split': [2, 5, 10],
+    'bootstrap': [True, False]
+}
+# Estimator for use in random search
+estimator = RandomForestClassifier(random_state = seedRF)
+# Create the random search model
+rs = RandomizedSearchCV(estimator, param_grid, n_jobs = -1, 
+                        scoring = 'roc_auc', cv = 3, 
+                        n_iter = 10, verbose = 1, random_state=seedRF)
+# Random searsh  
+y_train = np.array(y_train)rs.fit(x_train, y_train).ravel()
+print(rs.best_params_, "\n")
+### Working with best estimator from RandomizedSearch 
+best_model = rs.best_estimator_
+# Save model
+joblib.dump(best_model, "rf_RandomSearch.pkl")
+## Evaluating ROC Curve and extracting features priority
+fi_model = evaluate_model(x_train, y_train, x_validation, y_validation, test_nolabels_prediction)
+## Predicting on No_Labeled dataset and saving prediction ready to submit
+# test_nolabels_prediction = predictOnSet(best_model, test_nolabels)
+# savePrediction(test_nolabels_prediction, 'first_rfSearch_noLabelPrediction.csv')
+
+## XGBClassifier
+estimator = XGBClassifier(use_label_encoder=False,subsample=0.9, colsample_bynode=0.2)
+## Passing best estimator from Ramdomized RF to XGBoost
+# NOTE: A RandomizedSearchCV was apply with a different param_grid that can be found in the report
+param_grid = {
+    'n_estimators': [377],
+    'max_depth': [8],
+    'max_leaf_nodes':[37],
+    'max_features' : [0.3],
+    'random_state' :[50]
+}
+# Create the random search model
+rs = RandomizedSearchCV(estimator, param_grid, n_jobs = -1, 
+                        scoring = 'roc_auc', cv = 3, 
+                        n_iter = 4, verbose = 1, random_state=47)
+rs.fit(x_train, y_train)
+print(rs.best_params_, "\n")
+model = rs.best_estimator_
+# Save model
+joblib.dump(model, "XGBCl_bestRF_Standard.pkl")
+###    To monitor evolution on mode.fit() and find the early soping point
+## Reference: https://machinelearningmastery.com/avoid-overfitting-by-early-stopping-with-xgboost-in-python/ 
+eval_set = [(x_validation, y_validation)]
+model.fit(x_train, y_train, early_stopping_rounds=10, eval_metric="error", eval_set=eval_set, verbose=True)
+results = model.evals_result()
+epochs = len(results['validation_0']['error'])
+x_axis = range(0, epochs)
+# plot log loss
+fig, ax = plt.subplots()
+ax.plot(x_axis, results['validation_0']['logloss'], label='Train')
+ax.plot(x_axis, results['validation_1']['logloss'], label='Validation')
+ax.legend()
+plt.ylabel('log_loss')
+plt.title('XGBoost Log Loss')
+plt.show()
+# plot classification error
+fig, ax = plt.subplots()
+ax.plot(x_axis, results['validation_0']['error'], label='Train')
+ax.plot(x_axis, results['validation_1']['error'], label='Validation')
+ax.legend()
+plt.ylabel('Classification Error')
+plt.title('XGBoost Classification Error')
+plt.show()
+fig.show()
+
+## ROC metric and feature priority 
+evaluate_model(x_train, y_train, x_validation, y_validation, model)
+
+## Prediction (Example: with XGBoost Classifier)
+test_nolabels_prediction = predictOnSet(model, test_nolabels)
+test_nolabels_prediction = np.int8(test_nolabels_prediction)
+savePrediction(test_nolabels_prediction, 'XGBCl_bestRF_Standard.csv')
+
+## Calculating F1 and ROC-AUC metrics for all produced models
+modelNameList = ['rf_RandomSearch.pkl']
+for model in modelNameList:
+    model = joblib.load(model)
+    model.fit(x_train, y_train) 
+    y_hat = model.predict(x_validation)
+    f1 = f1_score(y_validation, y_hat, average ='binary',zero_division = 0)
+    roc = roc_auc_score(y_validation, y_hat)
+    print("quality of prediction of " + str(model) + ", f1_score:", f1, ", ROC: ", roc,"\n",)
+
+
